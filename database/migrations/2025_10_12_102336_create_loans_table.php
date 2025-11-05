@@ -10,16 +10,31 @@ return new class extends Migration
     {
         Schema::create('loans', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('item_id')->constrained()->onDelete('cascade');
-            $table->string('borrower_name');
-            $table->string('borrower_role')->nullable();
-            $table->string('borrower_department')->nullable();
 
-            $table->integer('quantity');
+            // Relasi ke items & employees
+            $table->foreignId('item_id')
+                ->constrained('items')
+                ->onDelete('cascade');
+
+            $table->foreignId('employee_id')
+                ->constrained('employees')
+                ->onDelete('cascade');
+
+            // Detail peminjaman
             $table->date('loan_date');
-            $table->date('return_date')->nullable();
-            $table->enum('status', ['Dipinjam', 'Dikembalikan'])->default('Dipinjam');
+            $table->date('expected_return_date')->nullable();
+            $table->date('actual_return_date')->nullable();
+
+            $table->enum('status', ['Dipinjam', 'Dikembalikan', 'Hilang'])
+                ->default('Dipinjam');
+
+            $table->text('condition_after')->nullable();
+            $table->text('notes')->nullable();
+
             $table->timestamps();
+
+            // pastikan engine InnoDB
+            $table->engine = 'InnoDB';
         });
     }
 

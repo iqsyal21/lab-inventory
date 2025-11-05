@@ -32,22 +32,8 @@
                             <label class="form-label fw-semibold">Nama Barang</label>
                             <p class="form-control-plaintext">{{ $item->name }}</p>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Jumlah Total</label>
-                            <p class="form-control-plaintext">{{ $item->quantity_total }}</p>
-                        </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Jumlah Tersedia</label>
-                            <p class="form-control-plaintext">
-                                @if ($item->quantity_available > 0)
-                                <span class="badge bg-success">{{ $item->quantity_available }}</span>
-                                @else
-                                <span class="badge bg-danger">0</span>
-                                @endif
-                            </p>
-                        </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Kondisi</label>
                             <p class="form-control-plaintext">
@@ -67,7 +53,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-md-4">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-info text-white">

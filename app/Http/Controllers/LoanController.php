@@ -2,213 +2,214 @@
 
 namespace App\Http\Controllers;
 
+use Maatwebsite\Excel\Facades\Excel;
+
 use App\Models\Loan;
 use App\Models\Item;
+use App\Models\Employee;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class LoanController extends Controller
 {
+    /**
+     * Tampilkan daftar semua peminjaman
+     */
     public function index(Request $request)
     {
-        $query = Loan::with('item');
-        
-        // Filter by search term
+        $query = Loan::with(['item', 'employee'])
+            ->orderBy('loan_date', 'desc');
+
+        // Optional: filter pencarian
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('borrower_name', 'like', "%{$search}%")
-                  ->orWhere('borrower_department', 'like', "%{$search}%")
-                  ->orWhereHas('item', function($itemQuery) use ($search) {
-                      $itemQuery->where('name', 'like', "%{$search}%");
-                  });
-            });
+            $query->whereHas(
+                'employee',
+                fn($q) =>
+                $q->where('name', 'like', "%{$search}%")
+            )->orWhereHas(
+                'item',
+                fn($q) =>
+                $q->where('name', 'like', "%{$search}%")
+            );
         }
-        
-        // Filter by status
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        
-        // Filter by borrower role
-        if ($request->filled('role')) {
-            $query->where('borrower_role', $request->role);
-        }
-        
-        // Filter by date range
+
         if ($request->filled('date_from')) {
-            $query->where('loan_date', '>=', $request->date_from);
+            $query->whereDate('loan_date', '>=', $request->date_from);
         }
+
         if ($request->filled('date_to')) {
-            $query->where('loan_date', '<=', $request->date_to);
+            $query->whereDate('loan_date', '<=', $request->date_to);
         }
-        
-        $loans = $query->latest()->paginate(10)->withQueryString();
+
+        $loans = $query->paginate(10);
+
         return view('loans.index', compact('loans'));
     }
 
+    /**
+     * Form tambah peminjaman
+     */
     public function create()
     {
-        $items = Item::with('loans')->get(); // pastikan accessor quantity_available aktif
-        return view('loans.create', compact('items'));
+        // Ambil hanya barang yang BELUM dipinjam
+        $borrowedItemIds = Loan::where('status', 'Dipinjam')->pluck('item_id');
+        $items = Item::whereNotIn('id', $borrowedItemIds)
+            ->orderBy('name')
+            ->get();
+
+        $employees = Employee::orderBy('name')->get();
+
+        return view('loans.create', compact('items', 'employees'));
     }
 
+    /**
+     * Simpan data peminjaman baru
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'item_id' => 'required|exists:items,id',
-            'borrower_name' => 'required|string|max:255',
-            'borrower_role' => 'nullable|string|max:100',
-            'borrower_department' => 'nullable|string|max:150',
-            'quantity' => 'required|integer|min:1',
+            'employee_id' => 'required|exists:employees,id',
             'loan_date' => 'required|date',
+            'expected_return_date' => 'nullable|date|after_or_equal:loan_date',
+            'notes' => 'nullable|string|max:500',
         ]);
 
-        $item = Item::findOrFail($validated['item_id']);
-        $available = $item->quantity_available;
+        // Pastikan barang belum dipinjam
+        $isBorrowed = Loan::where('item_id', $validated['item_id'])
+            ->where('status', 'Dipinjam')
+            ->exists();
 
-        if ($validated['quantity'] > $available) {
-            return back()
-                ->withInput()
-                ->withErrors(['quantity' => 'Jumlah yang dipinjam melebihi stok tersedia (' . $available . ')']);
+        if ($isBorrowed) {
+            return back()->withErrors(['item_id' => 'Barang ini sedang dipinjam dan belum dikembalikan.'])->withInput();
         }
 
-        // Set status default ke "Dipinjam"
-        $validated['status'] = 'Dipinjam';
+        Loan::create(array_merge($validated, [
+            'status' => 'Dipinjam',
+        ]));
 
-        Loan::create($validated);
-
-        return redirect()->route('loans.index')->with('success', 'Data peminjaman berhasil ditambahkan.');
+        return redirect()->route('loans.index')
+            ->with('success', 'Data peminjaman berhasil ditambahkan.');
     }
 
-    public function show(Loan $loan)
+    /**
+     * Detail peminjaman
+     */
+    public function show($id)
     {
+        $loan = Loan::with(['item', 'employee'])->findOrFail($id);
         return view('loans.show', compact('loan'));
     }
 
-    public function edit(Loan $loan)
+    /**
+     * Form edit
+     */
+    public function edit($id)
     {
-        $items = Item::with('loans')->get();
-        return view('loans.edit', compact('loan', 'items'));
+        $loan = Loan::findOrFail($id);
+
+        // Barang lain yang belum dipinjam, plus barang ini sendiri
+        $borrowedItemIds = Loan::where('status', 'Dipinjam')
+            ->where('id', '<>', $loan->id)
+            ->pluck('item_id');
+
+        $items = Item::whereNotIn('id', $borrowedItemIds)
+            ->orderBy('name')
+            ->get();
+
+        $employees = Employee::orderBy('name')->get();
+
+        return view('loans.edit', compact('loan', 'items', 'employees'));
     }
 
-    public function update(Request $request, Loan $loan)
+    /**
+     * Update data peminjaman
+     */
+    public function update(Request $request, $id)
     {
+        $loan = Loan::findOrFail($id);
+
         $validated = $request->validate([
             'item_id' => 'required|exists:items,id',
-            'borrower_name' => 'required|string|max:255',
-            'borrower_role' => 'nullable|string|max:100',
-            'borrower_department' => 'nullable|string|max:150',
-            'quantity' => 'required|integer|min:1',
+            'employee_id' => 'required|exists:employees,id',
             'loan_date' => 'required|date',
-            'return_date' => 'nullable|date',
-            // ❌ status tidak perlu diinput manual
+            'expected_return_date' => 'nullable|date|after_or_equal:loan_date',
+            'actual_return_date' => 'nullable|date|after_or_equal:loan_date',
+            'status' => 'required|string|in:Dipinjam,Dikembalikan,Hilang,Rusak',
+            'condition_after' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:500',
         ]);
-
-        $item = Item::findOrFail($validated['item_id']);
-
-        // Hitung stok tersedia kecuali pinjaman ini sendiri
-        $borrowedByOthers = $item->loans()
-            ->where('status', 'Dipinjam')
-            ->where('id', '!=', $loan->id)
-            ->sum('quantity');
-
-        $available = $item->quantity_total - $borrowedByOthers;
-
-        // Cegah overloan (hanya jika masih berstatus dipinjam)
-        if ($loan->status === 'Dipinjam' && $validated['quantity'] > $available) {
-            return back()
-                ->withInput()
-                ->withErrors(['quantity' => 'Jumlah yang dipinjam melebihi stok tersedia (' . $available . ')']);
-        }
 
         $loan->update($validated);
 
-        return redirect()->route('loans.index')->with('success', 'Data peminjaman berhasil diperbarui.');
+        return redirect()->route('loans.show', $loan->id)
+            ->with('success', 'Data peminjaman berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus data peminjaman
+     */
+    public function destroy($id)
+    {
+        $loan = Loan::findOrFail($id);
+        $loan->delete();
+
+        return redirect()->route('loans.index')
+            ->with('success', 'Data peminjaman berhasil dihapus.');
+    }
+
+
+    public function print($id)
+    {
+        $loan = Loan::with(['item', 'employee'])->findOrFail($id);
+
+        $pdf = Pdf::loadView('loans.print', compact('loan'))
+            ->setPaper('A4', 'portrait');
+
+        return $pdf->stream('Bukti_Peminjaman_' . $loan->id . '.pdf');
     }
 
     public function export(Request $request)
     {
-        $query = Loan::with('item');
-        
-        // Apply same filters as index method
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('borrower_name', 'like', "%{$search}%")
-                  ->orWhere('borrower_department', 'like', "%{$search}%")
-                  ->orWhereHas('item', function($itemQuery) use ($search) {
-                      $itemQuery->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-        
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        
-        if ($request->filled('role')) {
-            $query->where('borrower_role', $request->role);
-        }
-        
-        if ($request->filled('date_from')) {
-            $query->where('loan_date', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->where('loan_date', '<=', $request->date_to);
-        }
-        
-        $loans = $query->latest()->get();
-        
-        $filename = 'data_peminjaman_' . date('Y-m-d_H-i-s') . '.csv';
-        
+        $loans = Loan::with('item', 'employee')->orderBy('loan_date', 'desc')->get();
+
+        $filename = 'loans_export_' . date('Y-m-d_H-i-s') . '.csv';
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
-        
-        $callback = function() use ($loans) {
+
+        $callback = function () use ($loans) {
             $file = fopen('php://output', 'w');
-            
-            // Add BOM for UTF-8
+
+            // BOM UTF-8
             fwrite($file, "\xEF\xBB\xBF");
-            
-            // Headers
-            fputcsv($file, [
-                'No',
-                'Barang',
-                'Peminjam',
-                'Peran',
-                'Prodi / Unit',
-                'Jumlah',
-                'Tanggal Pinjam',
-                'Tanggal Kembali',
-                'Status',
-                'Tanggal Dibuat',
-                'Tanggal Diperbarui'
-            ]);
-            
-            // Data
-            $counter = 0;
+
+            // Header CSV
+            fputcsv($file, ['No', 'Barang', 'Peminjam', 'Departemen / Jabatan', 'Tanggal Pinjam', 'Tanggal Kembali', 'Status'], ';');
+
+            $counter = 1;
             foreach ($loans as $loan) {
-                $counter++;
                 fputcsv($file, [
-                    $counter,
+                    $counter++,
                     $loan->item->name ?? '-',
-                    $loan->borrower_name,
-                    $loan->borrower_role,
-                    $loan->borrower_department ?? '-',
-                    $loan->quantity,
+                    $loan->employee->name ?? '-',
+                    $loan->employee->department ?? '-',
                     \Carbon\Carbon::parse($loan->loan_date)->format('d/m/Y'),
-                    $loan->return_date ? \Carbon\Carbon::parse($loan->return_date)->format('d/m/Y') : '-',
+                    $loan->expected_return_date ? \Carbon\Carbon::parse($loan->expected_return_date)->format('d/m/Y') : '-',
                     $loan->status,
-                    $loan->created_at->format('d/m/Y H:i'),
-                    $loan->updated_at->format('d/m/Y H:i')
-                ]);
+                ], ';');
             }
-            
+
             fclose($file);
         };
-        
+
+
         return response()->stream($callback, 200, $headers);
     }
 }

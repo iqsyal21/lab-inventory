@@ -12,41 +12,27 @@ class Item extends Model
     protected $fillable = [
         'code',
         'name',
-        'quantity_total',
         'condition',
         'location',
+        'description',
     ];
 
-    // Relasi ke tabel loans (peminjaman)
+    /**
+     * Relasi ke Loan
+     * Satu barang bisa memiliki banyak riwayat peminjaman
+     */
     public function loans()
     {
         return $this->hasMany(Loan::class);
     }
 
-    // Relasi ke record pengembalian lewat loan
-    public function returnRecords()
-    {
-        return $this->hasManyThrough(ReturnRecord::class, Loan::class, 'item_id', 'loan_id');
-    }
-
-    // Total jumlah barang yang sedang dipinjam (status = Dipinjam)
-    public function getQuantityBorrowedAttribute()
+    /**
+     * Cek apakah barang sedang dipinjam
+     */
+    public function isBorrowed()
     {
         return $this->loans()
             ->where('status', 'Dipinjam')
-            ->sum('quantity');
-    }
-
-    // Total jumlah barang yang sudah dikembalikan
-    public function getQuantityReturnedAttribute()
-    {
-        return $this->returnRecords()->sum('quantity_returned');
-    }
-
-    // Jumlah stok yang tersedia untuk dipinjam
-    public function getQuantityAvailableAttribute()
-    {
-        // stok tersedia = total - yang sedang dipinjam
-        return max(0, $this->quantity_total - $this->quantity_borrowed);
+            ->exists();
     }
 }

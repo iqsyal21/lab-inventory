@@ -29,68 +29,105 @@
         {{-- Pilih Barang --}}
         <div class="col-md-6">
             <label for="item_id" class="form-label fw-semibold">Barang</label>
-            <select name="item_id" id="item_id" class="form-select" required onchange="updateStock()">
+            <select name="item_id" id="item_id" class="form-select" required>
                 <option value="">-- Pilih Barang --</option>
                 @foreach ($items as $item)
-                <option value="{{ $item->id }}"
-                    data-available="{{ $item->quantity_available }}"
-                    {{ old('item_id', $loan->item_id) == $item->id ? 'selected' : '' }}>
-                    {{ $item->name }}
+                <option value="{{ $item->id }}" {{ old('item_id', $loan->item_id) == $item->id ? 'selected' : '' }}>
+                    {{ $item->code }} - {{ $item->name }}
                 </option>
                 @endforeach
             </select>
-            <small id="stock-info" class="text-muted">
-                Stok tersedia: {{ $loan->item->quantity_available ?? 0 }}
-            </small>
         </div>
 
-        {{-- Jumlah --}}
+        {{-- Pilih Karyawan --}}
         <div class="col-md-6">
-            <label for="quantity" class="form-label fw-semibold">Jumlah Dipinjam</label>
-            <input type="number" id="quantity" name="quantity" class="form-control"
-                value="{{ old('quantity', $loan->quantity) }}" min="1" required>
+            <label for="employee_id" class="form-label fw-semibold">Peminjam (Karyawan)</label>
+            <select name="employee_id" id="employee_id" class="form-select" required>
+                <option value="">-- Pilih Karyawan --</option>
+                @foreach ($employees as $employee)
+                <option value="{{ $employee->id }}" {{ old('employee_id', $loan->employee_id) == $employee->id ? 'selected' : '' }}>
+                    {{ $employee->name }} ({{ $employee->department }})
+                </option>
+                @endforeach
+            </select>
         </div>
     </div>
 
     <div class="row mb-3">
-        {{-- Nama Peminjam --}}
-        <div class="col-md-6">
-            <label for="borrower_name" class="form-label fw-semibold">Nama Peminjam</label>
-            <input type="text" id="borrower_name" name="borrower_name" class="form-control"
-                value="{{ old('borrower_name', $loan->borrower_name) }}" placeholder="Contoh: Andi Saputra" required>
-        </div>
-
-        {{-- Peran Peminjam --}}
-        <div class="col-md-6">
-            <label class="form-label fw-semibold d-block">Peran Peminjam</label>
-            @php
-            $roles = ['Mahasiswa', 'Dosen', 'Teknisi'];
-            @endphp
-            @foreach ($roles as $role)
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="borrower_role" id="role_{{ strtolower($role) }}"
-                    value="{{ $role }}" {{ old('borrower_role', $loan->borrower_role) == $role ? 'checked' : '' }}>
-                <label class="form-check-label" for="role_{{ strtolower($role) }}">{{ $role }}</label>
-            </div>
-            @endforeach
-        </div>
-    </div>
-
-    <div class="row mb-3">
-        {{-- Prodi / Unit --}}
-        <div class="col-md-6">
-            <label for="borrower_department" class="form-label fw-semibold">Prodi / Unit</label>
-            <input type="text" id="borrower_department" name="borrower_department" class="form-control"
-                value="{{ old('borrower_department', $loan->borrower_department) }}"
-                placeholder="Contoh: Teknik Informatika / Lab Jaringan">
-        </div>
-
         {{-- Tanggal Peminjaman --}}
         <div class="col-md-6">
             <label for="loan_date" class="form-label fw-semibold">Tanggal Peminjaman</label>
-            <input type="date" id="loan_date" name="loan_date" class="form-control"
-                value="{{ old('loan_date', \Carbon\Carbon::parse($loan->loan_date)->format('Y-m-d')) }}" required>
+            <input
+                type="date"
+                id="loan_date"
+                name="loan_date"
+                class="form-control"
+                value="{{ old('loan_date', \Carbon\Carbon::parse($loan->loan_date)->format('Y-m-d')) }}"
+                required>
         </div>
+
+        {{-- Tanggal Pengembalian (Rencana) --}}
+        <div class="col-md-6">
+            <label for="expected_return_date" class="form-label fw-semibold">Tanggal Pengembalian (Rencana)</label>
+            <input
+                type="date"
+                id="expected_return_date"
+                name="expected_return_date"
+                class="form-control"
+                value="{{ old('expected_return_date', optional($loan->expected_return_date)->format('Y-m-d')) }}"
+                required>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        {{-- Tanggal Pengembalian Aktual --}}
+        <div class="col-md-6">
+            <label for="actual_return_date" class="form-label fw-semibold">Tanggal Pengembalian (Aktual)</label>
+            <input
+                type="date"
+                id="actual_return_date"
+                name="actual_return_date"
+                class="form-control"
+                value="{{ old('actual_return_date', optional($loan->actual_return_date)->format('Y-m-d')) }}">
+        </div>
+
+        {{-- Status --}}
+        <div class="col-md-6">
+            <label for="status" class="form-label fw-semibold">Status</label>
+            <select name="status" id="status" class="form-select" required>
+                @php
+                $statuses = ['Dipinjam', 'Dikembalikan', 'Hilang', 'Rusak'];
+                @endphp
+                @foreach ($statuses as $status)
+                <option value="{{ $status }}" {{ old('status', $loan->status) == $status ? 'selected' : '' }}>
+                    {{ $status }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
+    {{-- Kondisi Barang Setelah Pengembalian --}}
+    <div class="mb-3">
+        <label for="condition_after" class="form-label fw-semibold">Kondisi Barang Setelah Pengembalian</label>
+        <input
+            type="text"
+            id="condition_after"
+            name="condition_after"
+            class="form-control"
+            placeholder="Contoh: Masih baik, layar retak, dll."
+            value="{{ old('condition_after', $loan->condition_after) }}">
+    </div>
+
+    {{-- Catatan --}}
+    <div class="mb-3">
+        <label for="notes" class="form-label fw-semibold">Catatan</label>
+        <textarea
+            id="notes"
+            name="notes"
+            class="form-control"
+            rows="3"
+            placeholder="Keterangan tambahan">{{ old('notes', $loan->notes) }}</textarea>
     </div>
 
     <div class="text-end">
@@ -99,17 +136,4 @@
         </button>
     </div>
 </form>
-
-{{-- Script untuk update stok --}}
-<script>
-    function updateStock() {
-        const select = document.getElementById('item_id');
-        const stockInfo = document.getElementById('stock-info');
-        const selectedOption = select.options[select.selectedIndex];
-        const available = selectedOption.dataset.available ?? 0;
-        stockInfo.textContent = 'Stok tersedia: ' + available;
-    }
-
-    document.addEventListener('DOMContentLoaded', updateStock);
-</script>
 @endsection

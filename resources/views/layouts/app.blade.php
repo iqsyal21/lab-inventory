@@ -90,8 +90,8 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->is('returns*') ? 'active' : '' }}" href="{{ route('returns.index') }}">
-                            Pengembalian
+                        <a class="nav-link {{ request()->is('employees*') ? 'active' : '' }}" href="{{ route('employees.index') }}">
+                            Karyawan
                         </a>
                     </li>
                     <!-- <li class="nav-item">

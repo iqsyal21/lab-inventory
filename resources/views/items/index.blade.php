@@ -40,8 +40,8 @@
         <form method="GET" action="{{ route('items.index') }}" id="filterForm">
             <div class="mb-3">
                 <label for="search" class="form-label">Cari</label>
-                <input type="text" class="form-control" id="search" name="search" 
-                       value="{{ request('search') }}" placeholder="Nama, kode, atau lokasi...">
+                <input type="text" class="form-control" id="search" name="search"
+                    value="{{ request('search') }}" placeholder="Nama, kode, atau lokasi...">
             </div>
             <div class="mb-3">
                 <label for="condition" class="form-label">Kondisi</label>
@@ -49,14 +49,6 @@
                     <option value="">Semua Kondisi</option>
                     <option value="Baik" {{ request('condition') == 'Baik' ? 'selected' : '' }}>Baik</option>
                     <option value="Rusak" {{ request('condition') == 'Rusak' ? 'selected' : '' }}>Rusak</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="availability" class="form-label">Ketersediaan</label>
-                <select class="form-select" id="availability" name="availability">
-                    <option value="">Semua</option>
-                    <option value="available" {{ request('availability') == 'available' ? 'selected' : '' }}>Tersedia</option>
-                    <option value="unavailable" {{ request('availability') == 'unavailable' ? 'selected' : '' }}>Tidak Tersedia</option>
                 </select>
             </div>
             <div class="d-grid gap-2">
@@ -73,11 +65,9 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>#</th>
+                        <th>No</th>
                         <th>Kode</th>
                         <th>Nama Barang</th>
-                        <th>Jumlah Total</th>
-                        <th>Jumlah Tersedia</th>
                         <th>Kondisi</th>
                         <th>Lokasi</th>
                         <th class="text-center">Aksi</th>
@@ -89,14 +79,6 @@
                         <td>{{ $items->firstItem() + $loop->index }}</td>
                         <td>{{ $item->code }}</td>
                         <td>{{ $item->name }}</td>
-                        <td>{{ $item->quantity_total }}</td>
-                        <td>
-                            @if ($item->quantity_available > 0)
-                            <span class="badge bg-success">{{ $item->quantity_available }}</span>
-                            @else
-                            <span class="badge bg-danger">0</span>
-                            @endif
-                        </td>
                         <td>
                             @if ($item->condition === 'Baik')
                             <span class="badge bg-success">Baik</span>
@@ -107,6 +89,7 @@
                         <td>{{ $item->location ?? '-' }}</td>
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-2">
+                                <a href="{{ route('items.show', $item->id) }}" class="btn btn-sm btn-outline-info">Detail</a>
                                 <a href="{{ route('items.edit', $item->id) }}" class="btn btn-sm btn-outline-primary">
                                     Edit
                                 </a>
@@ -122,7 +105,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-muted">
+                        <td colspan="6" class="text-center py-4 text-muted">
                             Belum ada data barang.
                         </td>
                     </tr>
@@ -130,7 +113,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         {{-- Pagination --}}
         <div class="d-flex justify-content-between align-items-center mt-3">
             <div class="text-muted">

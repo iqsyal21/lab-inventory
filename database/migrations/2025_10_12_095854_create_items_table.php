@@ -12,10 +12,13 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('name');
-            $table->integer('quantity_total')->default(0);
             $table->string('condition')->default('Baik');
             $table->string('location')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
+
+            // ✅ Pastikan InnoDB agar mendukung foreign key
+            $table->engine = 'InnoDB';
         });
     }
 

@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\LoanController;
-use App\Http\Controllers\ReturnController;
 
 use Illuminate\Support\Facades\Route;
 
@@ -14,7 +14,9 @@ Route::get('items/export', [ItemController::class, 'export'])->name('items.expor
 Route::resource('items', ItemController::class);
 
 Route::get('loans/export', [LoanController::class, 'export'])->name('loans.export');
+Route::get('/loans/{id}/print', [LoanController::class, 'print'])->name('loans.print');
 Route::resource('loans', LoanController::class);
 
-Route::get('returns/export', [ReturnController::class, 'export'])->name('returns.export');
-Route::resource('returns', ReturnController::class);
+
+Route::get('employee/export', [EmployeeController::class, 'export'])->name('employee.export');
+Route::resource('employees', EmployeeController::class);

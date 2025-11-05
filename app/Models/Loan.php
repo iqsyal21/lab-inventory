@@ -9,43 +9,78 @@ class Loan extends Model
 {
     use HasFactory;
 
+    // Daftar status yang konsisten
+    const STATUS_BORROWED = 'Dipinjam';
+    const STATUS_RETURNED = 'Dikembalikan';
+    const STATUS_LOST = 'Hilang';
+    const STATUS_DAMAGED = 'Rusak';
+
     protected $fillable = [
         'item_id',
-        'borrower_name',
-        'borrower_role',
-        'borrower_department',
-        'quantity',
+        'employee_id',
         'loan_date',
-        'return_date',
+        'expected_return_date',
+        'actual_return_date',
         'status',
+        'condition_after',
+        'notes',
     ];
 
     protected $casts = [
         'loan_date' => 'date',
-        'return_date' => 'date',
+        'expected_return_date' => 'date',
+        'actual_return_date' => 'date',
     ];
 
-    // Relasi ke item (barang)
+    /** Relasi ke Item */
     public function item()
     {
         return $this->belongsTo(Item::class);
     }
 
-    // Relasi ke record pengembalian (bisa banyak kali)
-    public function returnRecords()
+    /** Relasi ke Employee */
+    public function employee()
     {
-        return $this->hasMany(ReturnRecord::class, 'loan_id');
+        return $this->belongsTo(Employee::class);
     }
 
-    // Akses total barang yang sudah dikembalikan
-    public function getTotalReturnedAttribute()
+    /** Cek apakah sudah dikembalikan */
+    public function isReturned()
     {
-        return $this->returnRecords()->sum('quantity_returned');
+        return $this->status === self::STATUS_RETURNED;
     }
 
-    // Akses sisa pinjaman yang belum dikembalikan
-    public function getRemainingQuantityAttribute()
+    /** Label status otomatis */
+    public function getStatusLabelAttribute()
     {
-        return max(0, $this->quantity - $this->total_returned);
+        return ucfirst($this->status);
+    }
+
+    /** Scope untuk filter */
+    public function scopeFilter($query, array $filters)
+    {
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->whereHas(
+                'employee',
+                fn($q) =>
+                $q->where('name', 'like', "%{$filters['search']}%")
+            )->orWhereHas(
+                'item',
+                fn($q) =>
+                $q->where('name', 'like', "%{$filters['search']}%")
+            );
+        }
+
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('loan_date', '>=', $filters['date_from']);
+        }
+
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('loan_date', '<=', $filters['date_to']);
+        }
     }
 }
