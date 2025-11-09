@@ -15,6 +15,7 @@ Route::resource('items', ItemController::class);
 
 Route::get('loans/export', [LoanController::class, 'export'])->name('loans.export');
 Route::get('/loans/{id}/print', [LoanController::class, 'print'])->name('loans.print');
+Route::get('/loans/print-multiple', [LoanController::class, 'printMultiple'])->name('loans.printMultiple');
 Route::resource('loans', LoanController::class);
 
 

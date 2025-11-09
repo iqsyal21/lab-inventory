@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Maatwebsite\Excel\Facades\Excel;
-
 use App\Models\Loan;
 use App\Models\Item;
 use App\Models\Employee;
@@ -172,6 +170,20 @@ class LoanController extends Controller
             ->setPaper('A4', 'portrait');
 
         return $pdf->stream('Bukti_Peminjaman_' . $loan->id . '.pdf');
+    }
+
+    public function printMultiple(Request $request)
+    {
+        $loanIds = explode(',', $request->query('ids')); // dari URL ?ids=1,2,3
+        $loans = Loan::with(['item', 'employee'])
+            ->whereIn('id', $loanIds)
+            ->get()
+            ->groupBy('employee_id'); // kelompokkan per peminjam
+
+        $pdf = Pdf::loadView('loans.print-multiple', compact('loans'))
+            ->setPaper('A4', 'portrait');
+
+        return $pdf->stream('Formulir_Peminjaman_Barang.pdf');
     }
 
     public function export(Request $request)

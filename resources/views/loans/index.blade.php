@@ -9,6 +9,10 @@
         <a href="{{ route('loans.export', request()->query()) }}" class="btn btn-success">
             <i class="fas fa-download me-1"></i>Download CSV
         </a>
+        <button id="print-selected" class="btn btn-outline-secondary">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+
         <button type="button" class="btn btn-outline-primary" data-bs-toggle="offcanvas" data-bs-target="#filterDrawer">
             <i class="fas fa-filter me-1"></i>Filter
         </button>
@@ -71,6 +75,7 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
+                        <th><input type="checkbox" id="select-all"></th>
                         <th>No</th>
                         <th>Barang</th>
                         <th>Peminjam</th>
@@ -84,6 +89,7 @@
                 <tbody>
                     @forelse ($loans as $loan)
                     <tr>
+                        <td><input type="checkbox" name="selected_loans[]" value="{{ $loan->id }}" class="loan-checkbox"></td>
                         <td>{{ $loans->firstItem() + $loop->index }}</td>
                         <td>{{ $loan->item->name ?? '-' }}</td>
                         <td>{{ $loan->employee->name ?? '-' }}</td>
@@ -117,31 +123,23 @@
                         <td class="text-center">
                             <div class="d-flex justify-content-center gap-2">
                                 <a href="{{ route('loans.show', $loan->id) }}" class="btn btn-sm btn-outline-info">Detail</a>
-                                <a href="{{ route('loans.edit', $loan->id) }}" class="btn btn-sm btn-outline-primary">
-                                    Edit
-                                </a>
+                                <a href="{{ route('loans.edit', $loan->id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
                                 <form action="{{ route('loans.destroy', $loan->id) }}" method="POST"
                                     onsubmit="return confirm('Yakin ingin menghapus data peminjaman ini?')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        Hapus
-                                    </button>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
                                 </form>
-                                <a href="{{ route('loans.print', $loan->id) }}" class="btn btn-sm btn-outline-secondary" target="_blank">
-                                    <i class="bi bi-printer"></i> Print
-                                </a>
                             </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-muted">
-                            Belum ada data peminjaman.
-                        </td>
+                        <td colspan="9" class="text-center py-4 text-muted">Belum ada data peminjaman.</td>
                     </tr>
                     @endforelse
                 </tbody>
+
             </table>
         </div>
 
@@ -159,3 +157,32 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('select-all');
+        const checkboxes = document.querySelectorAll('.loan-checkbox');
+        const printBtn = document.getElementById('print-selected');
+
+        selectAll?.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        });
+
+        printBtn?.addEventListener('click', function() {
+            const selected = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            if (selected.length === 0) {
+                alert('Belum ada data yang dipilih untuk dicetak!');
+                return;
+            }
+
+            const url = "{{ route('loans.printMultiple') }}" + "?ids=" + selected.join(',');
+            window.open(url, '_blank');
+
+        });
+    });
+</script>
+@endpush
