@@ -96,15 +96,20 @@
             <label for="status" class="form-label fw-semibold">Status</label>
             <select name="status" id="status" class="form-select" required>
                 @php
-                $statuses = ['Dipinjam', 'Dikembalikan', 'Hilang', 'Rusak'];
+                use App\Models\Loan;
+                $statuses = [
+                Loan::STATUS_BORROWED => 'Dipinjam',
+                Loan::STATUS_RETURNED => 'Dikembalikan',
+                ];
                 @endphp
-                @foreach ($statuses as $status)
-                <option value="{{ $status }}" {{ old('status', $loan->status) == $status ? 'selected' : '' }}>
-                    {{ $status }}
+                @foreach ($statuses as $value => $label)
+                <option value="{{ $value }}" {{ old('status', $loan->status) == $value ? 'selected' : '' }}>
+                    {{ $label }}
                 </option>
                 @endforeach
             </select>
         </div>
+
     </div>
 
     {{-- Kondisi Barang Setelah Pengembalian --}}

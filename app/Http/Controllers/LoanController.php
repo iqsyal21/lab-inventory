@@ -224,4 +224,16 @@ class LoanController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (empty($ids)) {
+            return response()->json(['message' => 'Tidak ada data dipilih.'], 400);
+        }
+
+        Loan::whereIn('id', $ids)->delete();
+
+        return response()->json(['message' => 'Data peminjaman terpilih berhasil dihapus.']);
+    }
 }

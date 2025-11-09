@@ -14,8 +14,8 @@ Route::get('items/export', [ItemController::class, 'export'])->name('items.expor
 Route::resource('items', ItemController::class);
 
 Route::get('loans/export', [LoanController::class, 'export'])->name('loans.export');
-Route::get('/loans/{id}/print', [LoanController::class, 'print'])->name('loans.print');
 Route::get('/loans/print-multiple', [LoanController::class, 'printMultiple'])->name('loans.printMultiple');
+Route::post('/loans/bulk-delete', [LoanController::class, 'bulkDelete'])->name('loans.bulkDelete');
 Route::resource('loans', LoanController::class);
 
 

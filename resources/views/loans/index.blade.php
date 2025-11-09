@@ -9,13 +9,22 @@
         <a href="{{ route('loans.export', request()->query()) }}" class="btn btn-success">
             <i class="fas fa-download me-1"></i>Download CSV
         </a>
+
+        {{-- Tombol Print --}}
         <button id="print-selected" class="btn btn-outline-secondary">
-            <i class="bi bi-printer me-1"></i>Print
+            Print
         </button>
 
-        <button type="button" class="btn btn-outline-primary" data-bs-toggle="offcanvas" data-bs-target="#filterDrawer">
-            <i class="fas fa-filter me-1"></i>Filter
+        {{-- Tombol Hapus --}}
+        <button id="delete-selected" class="btn btn-outline-danger">
+            Hapus
         </button>
+
+        {{-- Tombol Filter --}}
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="offcanvas" data-bs-target="#filterDrawer">
+            Filter
+        </button>
+
         <a href="{{ route('loans.create') }}" class="btn btn-primary">
             + Tambah Peminjaman
         </a>
@@ -30,7 +39,7 @@
 <div class="alert alert-danger">{{ session('error') }}</div>
 @endif
 
-{{-- Filter Drawer --}}
+{{-- FILTER DRAWER --}}
 <div class="offcanvas offcanvas-end" tabindex="-1" id="filterDrawer" aria-labelledby="filterDrawerLabel">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="filterDrawerLabel">Filter Data Peminjaman</h5>
@@ -49,8 +58,6 @@
                     <option value="">Semua Status</option>
                     <option value="Dipinjam" {{ request('status') == 'Dipinjam' ? 'selected' : '' }}>Dipinjam</option>
                     <option value="Dikembalikan" {{ request('status') == 'Dikembalikan' ? 'selected' : '' }}>Dikembalikan</option>
-                    <option value="Hilang" {{ request('status') == 'Hilang' ? 'selected' : '' }}>Hilang</option>
-                    <option value="Rusak" {{ request('status') == 'Rusak' ? 'selected' : '' }}>Rusak</option>
                 </select>
             </div>
             <div class="mb-3">
@@ -68,6 +75,7 @@
         </form>
     </div>
 </div>
+{{-- END FILTER DRAWER --}}
 
 <div class="card shadow-sm border-0">
     <div class="card-body">
@@ -110,12 +118,6 @@
                             @case('Dikembalikan')
                             <span class="badge bg-success">Dikembalikan</span>
                             @break
-                            @case('Hilang')
-                            <span class="badge bg-danger">Hilang</span>
-                            @break
-                            @case('Rusak')
-                            <span class="badge bg-secondary">Rusak</span>
-                            @break
                             @default
                             <span class="badge bg-light text-dark">Tidak Diketahui</span>
                             @endswitch
@@ -139,7 +141,6 @@
                     </tr>
                     @endforelse
                 </tbody>
-
             </table>
         </div>
 
@@ -164,11 +165,14 @@
         const selectAll = document.getElementById('select-all');
         const checkboxes = document.querySelectorAll('.loan-checkbox');
         const printBtn = document.getElementById('print-selected');
+        const deleteBtn = document.getElementById('delete-selected');
 
+        // Select All Checkbox
         selectAll?.addEventListener('change', function() {
             checkboxes.forEach(cb => cb.checked = selectAll.checked);
         });
 
+        // PRINT
         printBtn?.addEventListener('click', function() {
             const selected = Array.from(checkboxes)
                 .filter(cb => cb.checked)
@@ -181,7 +185,40 @@
 
             const url = "{{ route('loans.printMultiple') }}" + "?ids=" + selected.join(',');
             window.open(url, '_blank');
+        });
 
+        // DELETE
+        deleteBtn?.addEventListener('click', function() {
+            const selected = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            if (selected.length === 0) {
+                alert('Belum ada data yang dipilih untuk dihapus!');
+                return;
+            }
+
+            if (!confirm('Yakin ingin menghapus data peminjaman terpilih?')) return;
+
+            fetch("{{ route('loans.bulkDelete') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ids: selected
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message || 'Data berhasil dihapus.');
+                    location.reload();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Terjadi kesalahan saat menghapus data.');
+                });
         });
     });
 </script>
